@@ -54,6 +54,7 @@
 #include <time.h>
 #include "genlib.h"
 #include "deflex.h"
+#include "member_names.h"
 #ifdef HAVE_LIBMANGLE
 #include <libmangle.h>
 #endif
@@ -79,8 +80,13 @@ typedef struct export
   uint32_t data;
   uint32_t hint;
   int forward;	/* Number of forward label, 0 means no forward.  */
+  uint32_t member_name_offset;
   struct export *next;
 }export_type;
+
+uint32_t am1_member_name_offset;
+uint32_t am2_member_name_offset;
+uint32_t am3_member_name_offset;
 
 extern int d_nfuncs;
 extern export_type *d_exports;
@@ -90,7 +96,7 @@ static int dump_def (void);
 static void dump_lib (char *);
 
 static void dump_ialnm (FILE *fp);
-static void dump_iamh (FILE *fp, uint32_t size, char *name);
+static void dump_iamh (FILE *fp, uint32_t size, char *short_name, uint32_t name_offset);
 static void dump_ialm1 (FILE *fp, uint32_t id, uint32_t nid, uint32_t ntd);
 static void dump_ialm2 (FILE *fp, uint32_t id, uint32_t nid, uint32_t ntd);
 static void dump_slif (FILE *fp, export_type *exp, uint16_t count);
@@ -303,6 +309,26 @@ static inline uint32_t SYMBOLTABLE(export_type *exp)
 #define ARCHIVESYMBOLCOUNT(x) (((x)*2)+4)
 
 static void
+register_member_names()
+{
+  char name[1024];
+  snprintf(name, sizeof(name), "%s.1.o", dll_name);  // TODO: better name
+  am1_member_name_offset = member_names_add(name);
+
+  snprintf(name, sizeof(name), "%s.2.o", dll_name);  // TODO: better name
+  am2_member_name_offset = member_names_add(name);
+
+  snprintf(name, sizeof(name), "%s.3.o", dll_name);  // TODO: better name
+  am3_member_name_offset = member_names_add(name);
+
+  for (export_type * exp = d_exports; exp; exp = exp->next)
+  {
+    snprintf(name, sizeof(name), "%s.imp.%s.o", dll_name, exp->name);
+    exp->member_name_offset = member_names_add(name);
+  }
+}
+
+static void
 dump_lib (char *fnoutput)
 {
   export_type *exp;
@@ -318,6 +344,8 @@ dump_lib (char *fnoutput)
     strcat (fnoutput,base_name);
     strcat (fnoutput,".a");
   }
+
+  register_member_names();
 
   FILE *fp = fopen(fnoutput,"wb");
 
@@ -346,13 +374,6 @@ dump_lib (char *fnoutput)
   sizelm2  = OFFSETTABLE2(d_nfuncs);
   sizelm2 += INDEXTABLE2(d_nfuncs);
   sizelm2 += SYMBOLTABLE(d_exports);
-
-  // TODO: a #define for this
-  uint32_t sizelm3;
-  sizelm3  = strlen(dll_name) + 1;
-  // dont forget to handle odd obj
-  if (sizelm3 % 2 != 0)
-    sizelm3++;
 
   // ARCHIVE MEMBER 1 SIZE
   //IFH   = 20;
@@ -411,13 +432,15 @@ dump_lib (char *fnoutput)
     size3even++;
   sizeam3 +=size3even;
 
-  //TODO: CHECK IF I NEED to add sizelm3 here
+  uint32_t sizelm3 = 60 + member_names_get_length();
+  if (sizelm3 % 2 != 0)
+    sizelm3++;
 
-  uint32_t id  = sizemagic+sizelm1+sizelm2+120;
-  uint32_t nid = sizemagic+sizelm1+sizelm2+sizeam1+181;
-  uint32_t ntd = sizemagic+sizelm1+sizelm2+sizeam1+sizeam2+241;
+  uint32_t id  = sizemagic+sizelm1+sizelm2+sizelm3+120;
+  uint32_t nid = sizemagic+sizelm1+sizelm2+sizelm3+sizeam1+181;
+  uint32_t ntd = sizemagic+sizelm1+sizelm2+sizelm3+sizeam1+sizeam2+241;
 
-  uint32_t prevhint = sizemagic+sizelm1+sizelm2+sizeam1+sizeam2+sizeam3+301;
+  uint32_t prevhint = sizemagic+sizelm1+sizelm2+sizelm3+sizeam1+sizeam2+sizeam3+301;
   uint32_t prevhelp=0;
 
   /* SHORT IMPORT LIBRARY ARCHIVE MEMBERS */
@@ -434,27 +457,23 @@ dump_lib (char *fnoutput)
     }
   }
 
-
   /* LINKER MEMBER 1 */
-  dump_iamh(fp, sizelm1, NULL);
+  dump_iamh(fp, sizelm1, "/", 0);
   dump_ialm1(fp, BYTESWAP32(id), BYTESWAP32(nid), BYTESWAP32(ntd));
 
   /* LINKER MEMBER 2 */
-  dump_iamh(fp, sizelm2, NULL);
+  dump_iamh(fp, sizelm2, "/", 0);
   dump_ialm2(fp, id, nid, ntd);
 
-  //TODO: if dllname is 16 chars+ then add IMAGE_ARCHIVES_LONGNAMES_MEMBER
-  if(strlen(dll_name) > 15)
-  {
-    dump_iamh(fp, sizelm3, "//");
-    dump_ialnm(fp);
-  }
-
+  /* IMAGE ARCHIVES LONG NAMES MEMBER */
+  uint32_t size_ialnm = member_names_get_length();
+  dump_iamh(fp, size_ialnm, "//", 0);
+  dump_ialnm(fp);
 
   uint32_t i;
 
   // ARCHIVE MEMBER 1 (.idata2 + .idata6)
-  dump_iamh(fp, sizeam1, dll_name);
+  dump_iamh(fp, sizeam1, NULL, am1_member_name_offset);
   dump_ifh (fp, 2, 8, 150 + strlen(dll_name) + 1 +size1even);
   dump_ish2(fp, 100, 120);
   dump_ish6(fp, 150, 120);
@@ -550,7 +569,7 @@ dump_lib (char *fnoutput)
   fprintf (fp,"\x7f%s_NULL_THUNK_DATA%c", base_name, '\x00');
 
   // ARCHIVE MEMBER 2 (.idata3)
-  dump_iamh(fp, sizeam2, dll_name);
+  dump_iamh(fp, sizeam2, NULL, am2_member_name_offset);
   dump_ifh (fp, 1, 2, 80);
   dump_ish3(fp, 60);
   // Section .idata$3
@@ -581,7 +600,7 @@ dump_lib (char *fnoutput)
   fprintf (fp,"%c",'\x0A');
 
   // ARCHIVE MEMBER 3 (.idata5 .idata4)
-  dump_iamh(fp, sizeam3, dll_name);
+  dump_iamh(fp, sizeam3, NULL, am3_member_name_offset);
   dump_ifh (fp, 2, 2, 116);
   dump_ish5(fp, 100);
   dump_ish4(fp, 100);
@@ -617,19 +636,19 @@ dump_lib (char *fnoutput)
   {
     dump_slif (fp,exp, i++);
   }
-
 }
 
 /* dump image archive long name member */
 static void
 dump_ialnm (FILE *fp)
 {
-  fprintf (fp,"%s%c", dll_name, '\x00');
+  fprintf (fp, "%s", member_names_get_string());
 
-  // If dllname+1 is an odd number append 0A to close
-  if (strlen(dll_name) % 2 == 0)
-      fprintf (fp,"\x0A");
-
+  // ar members are 2-aligned by adding an extra newline
+  if (member_names_get_length() % 2 != 0)
+  {
+    fprintf (fp, "\n");
+  }
 }
 
 /* dump image file header */
@@ -808,7 +827,7 @@ dump_ish6 (FILE *fp, uint32_t offset, uint32_t reloc)
 
 /* dump image archive member header */
 static void
-dump_iamh (FILE *fp, uint32_t size, char *name)
+dump_iamh (FILE *fp, uint32_t size, char *short_name, uint32_t name_offset)
 {
 
   // 4 cases
@@ -817,30 +836,15 @@ dump_iamh (FILE *fp, uint32_t size, char *name)
 
   /* IMAGE_ARCHIVE_MEMBER_HEADER */
   /* NAME */
-  // 15 char limit on dll name ??
-  // 11 char limit on base name
-
-  if(!name)
+  if (short_name)
   {
-    fprintf (fp,"/               "); // 2F 20++
+    // Short name, limited to 16 characters.
+    fprintf (fp, "%-16.16s", short_name);
   }
   else
   {
-    if(name[1] == '/')
-    {
-      fprintf (fp,"//              "); // 2F 2F 20++
-    }
-    else if(strlen(dll_name) > 15)
-    {
-      fprintf (fp,"/0              "); // 2F 30 20++
-    }
-    else
-    {
-      fprintf (fp,"%s/", dll_name);
-      uint32_t j;
-      for (j=0;j < 15-strlen(dll_name); j++)
-        fprintf (fp," ");
-    }
+    // Byte offset of a name in the special "//" member.
+    fprintf (fp, "/%-15d", name_offset);
   }
 
   /* DATE */
@@ -960,7 +964,8 @@ dump_slif (FILE *fp, export_type *exp, uint16_t count)
   uint32_t sizeslif = 20; // header size is 20
   sizeslif += strlen(exp->name) + strlen(dll_name) + 2 + oddname;
   /* IMAGE_ARCHIVE_MEMBER_HEADER */
-  dump_iamh(fp, sizeslif, dll_name);
+  dump_iamh(fp, sizeslif, NULL, exp->member_name_offset);
+
   // Sig1, Sig2, Version
   fwrite (&dummy1, sizeof(uint16_t), 1, fp);
   fwrite (&dummy2, sizeof(uint16_t), 1, fp);

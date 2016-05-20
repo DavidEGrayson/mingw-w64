@@ -19,6 +19,7 @@
 #include "genlib.h"
 #include <string.h>
 #include <libgen.h>
+#include <stdint.h>
 
 typedef struct ifunct
 {
@@ -62,6 +63,7 @@ typedef struct export
   int data;
   int hint;
   int forward;	/* Number of forward label, 0 means no forward.  */
+  uint32_t member_name_offset;
   struct export *next;
 }export_type;
 

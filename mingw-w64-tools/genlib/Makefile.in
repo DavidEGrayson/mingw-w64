@@ -107,7 +107,8 @@ PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_genlib_OBJECTS = src/genlib-genlib.$(OBJEXT) \
 	src/genlib-deffun.$(OBJEXT) src/genlib-deflex.$(OBJEXT) \
-	src/genlib-defparse.$(OBJEXT)
+	src/genlib-defparse.$(OBJEXT) \
+	src/genlib-member_names.$(OBJEXT)
 genlib_OBJECTS = $(am_genlib_OBJECTS)
 genlib_LDADD = $(LDADD)
 genlib_LINK = $(CCLD) $(genlib_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -301,6 +302,7 @@ with_mangle = @with_mangle@
 AM_LDFLAGS = @GENLIB_LDFLAGS@
 AM_CPPFLAGS = @GENLIB_CPPFLAGS@ -I$(top_srcdir)/src
 genlib_SOURCES = src/genlib.h src/genlib.c src/deffun.c src/deflex.c src/defparse.c \
+                 src/member_names.c \
                  src/deflex.h src/defparse.h
 
 genlib_CFLAGS = $(AM_CFLAGS) -O3 -g -Wall -Wextra
@@ -415,6 +417,8 @@ src/genlib-deflex.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/genlib-defparse.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
+src/genlib-member_names.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 
 genlib$(EXEEXT): $(genlib_OBJECTS) $(genlib_DEPENDENCIES) $(EXTRA_genlib_DEPENDENCIES) 
 	@rm -f genlib$(EXEEXT)
@@ -431,6 +435,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/genlib-deflex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/genlib-defparse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/genlib-genlib.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/genlib-member_names.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -503,6 +508,20 @@ src/genlib-defparse.obj: src/defparse.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/defparse.c' object='src/genlib-defparse.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(genlib_CFLAGS) $(CFLAGS) -c -o src/genlib-defparse.obj `if test -f 'src/defparse.c'; then $(CYGPATH_W) 'src/defparse.c'; else $(CYGPATH_W) '$(srcdir)/src/defparse.c'; fi`
+
+src/genlib-member_names.o: src/member_names.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(genlib_CFLAGS) $(CFLAGS) -MT src/genlib-member_names.o -MD -MP -MF src/$(DEPDIR)/genlib-member_names.Tpo -c -o src/genlib-member_names.o `test -f 'src/member_names.c' || echo '$(srcdir)/'`src/member_names.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/$(DEPDIR)/genlib-member_names.Tpo src/$(DEPDIR)/genlib-member_names.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/member_names.c' object='src/genlib-member_names.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(genlib_CFLAGS) $(CFLAGS) -c -o src/genlib-member_names.o `test -f 'src/member_names.c' || echo '$(srcdir)/'`src/member_names.c
+
+src/genlib-member_names.obj: src/member_names.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(genlib_CFLAGS) $(CFLAGS) -MT src/genlib-member_names.obj -MD -MP -MF src/$(DEPDIR)/genlib-member_names.Tpo -c -o src/genlib-member_names.obj `if test -f 'src/member_names.c'; then $(CYGPATH_W) 'src/member_names.c'; else $(CYGPATH_W) '$(srcdir)/src/member_names.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/$(DEPDIR)/genlib-member_names.Tpo src/$(DEPDIR)/genlib-member_names.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/member_names.c' object='src/genlib-member_names.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(genlib_CFLAGS) $(CFLAGS) -c -o src/genlib-member_names.obj `if test -f 'src/member_names.c'; then $(CYGPATH_W) 'src/member_names.c'; else $(CYGPATH_W) '$(srcdir)/src/member_names.c'; fi`
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
